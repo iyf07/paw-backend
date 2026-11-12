@@ -6,7 +6,7 @@ insert into auth.users (id, email) values
   ('11111111-1111-4111-8111-111111111111', 'alex@t.dev'),
   ('22222222-2222-4222-8222-222222222222', 'alex@other.dev');
 
-select matches((select handle from public.profiles where id = '11111111-1111-4111-8111-111111111111'), '^alex_[0-9]{4}$', 'new account gets a generated handle');
+select matches((select handle from public.profiles where id = '11111111-1111-4111-8111-111111111111'), '^user_[0-9]{4}$', 'new account gets a neutral generated handle (no email in it)');
 select isnt((select handle from public.profiles where id = '11111111-1111-4111-8111-111111111111'), (select handle from public.profiles where id = '22222222-2222-4222-8222-222222222222'), 'two alex@ emails get different handles');
 
 create function pg_temp.as_user(uid uuid) returns void language plpgsql as $$
