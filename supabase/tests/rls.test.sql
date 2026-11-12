@@ -1,6 +1,6 @@
 -- Run with: supabase test db
 begin;
-select plan(16);
+select plan(19);
 
 -- fixtures: three users, Alex leads a trip, Morgan joins by code, Casey is an outsider
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -55,6 +55,12 @@ select lives_ok($$insert into public.reactions (item_id, trip_id, rsvp) values (
 -- leader can confirm
 select pg_temp.as_user('11111111-1111-4111-8111-111111111111');
 select lives_ok($$update public.items set confirmed = true where id = 'e0000000-0000-4000-8000-000000000001'$$, 'leader confirms');
+
+-- testing aid: the leader votes for a member; a member cannot vote for someone else
+select lives_ok($$insert into public.reactions (item_id, trip_id, user_id, rsvp) values ('e0000000-0000-4000-8000-000000000001', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'going')$$, 'leader RSVPs for self');
+select lives_ok($$update public.reactions set rsvp = 'no' where user_id = '22222222-2222-4222-8222-222222222222'$$, 'leader changes a member RSVP');
+select is((select rsvp from public.reactions where user_id = '22222222-2222-4222-8222-222222222222'), 'no', 'member RSVP changed by leader');
+select pg_temp.as_user('22222222-2222-4222-8222-222222222222');
 
 select * from finish();
 rollback;
