@@ -65,3 +65,6 @@ insert into public.reactions (item_id, trip_id, user_id, vote, rsvp) values
 
 insert into public.comments (item_id, trip_id, user_id, text) values
   ('00000000-0000-4000-8000-0000000001a3', '00000000-0000-4000-8000-0000000000f1', '00000000-0000-4000-8000-0000000000b2', 'They have pup cups!');
+
+-- Seed users skip the first-run onboarding.
+update public.profiles set onboarded_at = now() where id in ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-0000000000b2');
