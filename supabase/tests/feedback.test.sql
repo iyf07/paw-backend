@@ -25,9 +25,9 @@ select is((select count(*)::int from public.feedback), 0, 'others cannot see it'
 select pg_temp.as_user('11111111-1111-4111-8111-111111111111');
 select throws_ok($$insert into public.feedback (kind, message) values ('rant', 'bad kind')$$, '23514', null, 'unknown kind is rejected');
 
--- rate limit: 10 per hour
-insert into public.feedback (kind, message) select 'other', 'spam ' || g from generate_series(1, 9) g;
-select throws_ok($$insert into public.feedback (kind, message) values ('other', 'one too many')$$, 'P0001', 'rate_limited', '11th feedback in an hour is rejected');
+-- rate limit: 60 per hour
+insert into public.feedback (kind, message) select 'other', 'spam ' || g from generate_series(1, 59) g;
+select throws_ok($$insert into public.feedback (kind, message) values ('other', 'one too many')$$, 'P0001', 'rate_limited', '61st feedback in an hour is rejected');
 
 
 select * from finish();
