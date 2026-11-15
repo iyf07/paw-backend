@@ -1,0 +1,35 @@
+begin;
+select plan(24);
+select has_column('public', 'profiles', 'temperature', 'profile stores temperature preference');
+select has_column('public', 'profiles', 'pace', 'profile stores trip pace');
+select has_column('public', 'profiles', 'spending', 'profile stores spending style');
+insert into auth.users (id, email) values
+ ('33333333-3333-4333-8333-333333333331', 'scales1@test.dev'),
+ ('33333333-3333-4333-8333-333333333332', 'scales2@test.dev');
+select is(to_jsonb(p)->>'temperature', null::text, 'new temperature is unset') from public.profiles p where id='33333333-3333-4333-8333-333333333331';
+select is(to_jsonb(p)->>'pace', null::text, 'new pace is unset') from public.profiles p where id='33333333-3333-4333-8333-333333333331';
+select is(to_jsonb(p)->>'spending', null::text, 'new spending is unset') from public.profiles p where id='33333333-3333-4333-8333-333333333331';
+update public.profiles set walking=4 where id='33333333-3333-4333-8333-333333333331';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-4333-8333-333333333331","role":"authenticated"}', true);
+select lives_ok($$update public.profiles set temperature=1, pace=3, spending=5 where id='33333333-3333-4333-8333-333333333331'$$, 'owner can save new preferences');
+select is(to_jsonb(p)->>'temperature', '1', 'temperature round-trips') from public.profiles p where id='33333333-3333-4333-8333-333333333331';
+select is(to_jsonb(p)->>'pace', '3', 'pace round-trips') from public.profiles p where id='33333333-3333-4333-8333-333333333331';
+select is(to_jsonb(p)->>'spending', '5', 'spending round-trips') from public.profiles p where id='33333333-3333-4333-8333-333333333331';
+select throws_ok($$update public.profiles set temperature=0 where id=auth.uid()$$, '23514', null, 'temperature rejects 0');
+select throws_ok($$update public.profiles set temperature=6 where id=auth.uid()$$, '23514', null, 'temperature rejects 6');
+select throws_ok($$update public.profiles set pace=0 where id=auth.uid()$$, '23514', null, 'pace rejects 0');
+select throws_ok($$update public.profiles set pace=6 where id=auth.uid()$$, '23514', null, 'pace rejects 6');
+select throws_ok($$update public.profiles set spending=0 where id=auth.uid()$$, '23514', null, 'spending rejects 0');
+select throws_ok($$update public.profiles set spending=6 where id=auth.uid()$$, '23514', null, 'spending rejects 6');
+select lives_ok($$update public.profiles set diet=array['glutenfree','不吃香菜'] where id=auth.uid()$$, 'owner can save a custom dietary need');
+select is((select diet from public.profiles where id=auth.uid()), array['glutenfree','不吃香菜']::text[], 'custom dietary need round-trips');
+select lives_ok($$update public.profiles set temperature=null, pace=null, spending=null where id=auth.uid()$$, 'new scales can be cleared');
+select lives_ok($$update public.profiles set temperature=5, pace=5, spending=5 where id='33333333-3333-4333-8333-333333333332'$$, 'foreign update is filtered by RLS');
+reset role;
+select is(to_jsonb(p)->>'temperature', null::text, 'other profile temperature unchanged') from public.profiles p where id='33333333-3333-4333-8333-333333333332';
+select is(to_jsonb(p)->>'pace', null::text, 'other profile pace unchanged') from public.profiles p where id='33333333-3333-4333-8333-333333333332';
+select is(to_jsonb(p)->>'spending', null::text, 'other profile spending unchanged') from public.profiles p where id='33333333-3333-4333-8333-333333333332';
+select is(walking::int, 4, 'existing walking preference preserved') from public.profiles where id='33333333-3333-4333-8333-333333333331';
+select * from finish();
+rollback;
