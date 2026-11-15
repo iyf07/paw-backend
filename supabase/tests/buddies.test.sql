@@ -1,6 +1,6 @@
 -- Run with: supabase test db
 begin;
-select plan(11);
+select plan(16);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'alex@t.dev',   '{"name":"Alex"}'),
@@ -26,10 +26,17 @@ select lives_ok($$select public.request_buddy('casey_t')$$, 'ask a second person
 select throws_ok($$select public.request_buddy('nobody_here')$$, 'P0001', 'unknown_handle', 'unknown ID rejected');
 select throws_ok($$select public.request_buddy('alex_t')$$, 'P0001', 'self', 'cannot ask yourself');
 
+-- look up before asking
+select is((select display_name from public.find_buddy('@MORGAN_T')), 'Morgan', 'find by ID shows the name');
+select is((select relation from public.find_buddy('morgan_t')), 'pending_out', 'relation: request sent');
+select is((select relation from public.find_buddy('alex_t')), 'self', 'relation: yourself');
+select is((select count(*)::int from public.find_buddy('nobody_here')), 0, 'unknown ID finds nothing');
+
 -- Morgan sees the request (and who it is from) and accepts; Casey stays pending
 select pg_temp.as_user('22222222-2222-4222-8222-222222222222');
 select is((select count(*)::int from public.buddies), 1, 'Morgan sees the request');
 select is((select count(*)::int from public.profiles where id = '11111111-1111-4111-8111-111111111111'), 1, 'Morgan can see Alex''s profile');
+select is((select relation from public.find_buddy('alex_t')), 'pending_in', 'relation: they asked you');
 select lives_ok($$select public.respond_buddy('11111111-1111-4111-8111-111111111111', true)$$, 'Morgan accepts');
 
 -- Alex adds both to a trip: only the accepted buddy joins, with the dog
