@@ -1,0 +1,16 @@
+begin;
+select plan(8);
+select has_column('public','dogs','recall_level','dog recall has five-level field');
+insert into auth.users (id,email) values ('44444444-4444-4444-8444-444444444441','recall@test.dev');
+insert into public.dogs(id,owner_id,name,recall) values ('44444444-4444-4444-8444-444444444442','44444444-4444-4444-8444-444444444441','Recall test','comes');
+select is(to_jsonb(d)->>'recall_level',null::text,'legacy recall is not silently converted') from public.dogs d where id='44444444-4444-4444-8444-444444444442';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"44444444-4444-4444-8444-444444444441","role":"authenticated"}',true);
+select lives_ok($$update public.dogs set recall_level=5 where id='44444444-4444-4444-8444-444444444442'$$,'owner can choose recall level');
+select is(to_jsonb(d)->>'recall_level','5','recall numeric value round-trips') from public.dogs d where id='44444444-4444-4444-8444-444444444442';
+select throws_ok($$update public.dogs set recall_level=0 where owner_id=auth.uid()$$,'23514',null,'reject recall below range');
+select throws_ok($$update public.dogs set recall_level=6 where owner_id=auth.uid()$$,'23514',null,'reject recall above range');
+select lives_ok($$update public.dogs set recall_level=null where owner_id=auth.uid()$$,'recall remains optional');
+select is(recall,'comes','legacy answer is preserved') from public.dogs where id='44444444-4444-4444-8444-444444444442';
+select * from finish();
+rollback;
