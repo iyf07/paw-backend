@@ -1,0 +1,15 @@
+begin;
+select plan(6);
+insert into auth.users(id,email,raw_user_meta_data) values ('b1111111-1111-4111-8111-111111111111','dog-interests@t.dev','{"name":"Dog owner"}');
+select set_config('request.jwt.claims','{"sub":"b1111111-1111-4111-8111-111111111111","role":"authenticated"}',true);
+set local role authenticated;
+insert into public.dogs(id,name,recall_level) values ('db000000-0000-4000-8000-000000000001','Interest Dog',5);
+select is((select interests from public.dogs where id='db000000-0000-4000-8000-000000000001'),array[]::text[],'new dog has empty interests, never inferred from recall');
+update public.dogs set interests=array['swimming','off_leash'] where id='db000000-0000-4000-8000-000000000001';
+select is((select interests from public.dogs where id='db000000-0000-4000-8000-000000000001'),array['swimming','off_leash'],'owner saves independent interests');
+select is((select recall_level::int from public.dogs where id='db000000-0000-4000-8000-000000000001'),5,'interest save preserves legacy recall');
+select is((select dogs->0->'interests' from public.find_friend_profile((select handle from public.profiles where id=auth.uid()))),'["swimming", "off_leash"]'::jsonb,'exact ID preview includes dog interests');
+select throws_ok($$update public.dogs set interests=null where id='db000000-0000-4000-8000-000000000001'$$,'23502',null,'null interests rejected');
+select throws_ok($$update public.dogs set interests=array['unknown'] where id='db000000-0000-4000-8000-000000000001'$$,'23514',null,'unknown interest rejected');
+select * from finish();
+rollback;
