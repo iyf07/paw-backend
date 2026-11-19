@@ -1,6 +1,6 @@
 -- Run with: supabase test db
 begin;
-select plan(11);
+select plan(12);
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'alex@t.dev',   '{"name":"Alex"}'),
   ('22222222-2222-4222-8222-222222222222', 'morgan@t.dev', '{"name":"Morgan"}'),
@@ -25,6 +25,7 @@ select is(public.peek_family('nope-nope'), null, 'unknown code finds nothing');
 select throws_ok($$select public.join_family('nope-nope')$$, 'P0001', 'invalid_code', 'bad code rejected');
 select lives_ok($$select public.join_family((select code from t_code))$$, 'Morgan joins with the code');
 select is(public.is_family_mate('11111111-1111-4111-8111-111111111111'), true, 'now family mates');
+select is((select status from public.buddies where requester_id = '11111111-1111-4111-8111-111111111111' and addressee_id = '22222222-2222-4222-8222-222222222222'), 'accepted', 'joining by code makes you friends with the admin');
 select throws_ok($$select public.join_family((select code from t_code))$$, 'P0001', 'already_in_family', 'cannot join twice');
 
 select pg_temp.as_user('11111111-1111-4111-8111-111111111111');
